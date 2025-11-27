@@ -16,7 +16,7 @@ To build and run Winter from source:
 
 ```bash
 # Install dependencies
-yarn
+yarn/npm
 
 # Build and run
 ./scripts/code.sh
