@@ -31,7 +31,7 @@ export const iconForeground = registerColor('icon.foreground',
 	nls.localize('iconForeground', "The default color for icons in the workbench."));
 
 export const focusBorder = registerColor('focusBorder',
-	{ dark: '#007FD4', light: '#0090F1', hcDark: '#F38518', hcLight: '#006BBD' },
+	{ dark: '#6B8E23', light: '#0090F1', hcDark: '#F38518', hcLight: '#006BBD' },
 	nls.localize('focusBorder', "Overall border color for focused elements. This color is only used if not overridden by a component."));
 
 export const contrastBorder = registerColor('contrastBorder',
@@ -50,11 +50,11 @@ export const selectionBackground = registerColor('selection.background',
 // ------ text link
 
 export const textLinkForeground = registerColor('textLink.foreground',
-	{ light: '#006AB1', dark: '#3794FF', hcDark: '#21A6FF', hcLight: '#0F4A85' },
+	{ light: '#006AB1', dark: '#6B8E23', hcDark: '#21A6FF', hcLight: '#0F4A85' },
 	nls.localize('textLinkForeground', "Foreground color for links in text."));
 
 export const textLinkActiveForeground = registerColor('textLink.activeForeground',
-	{ light: '#006AB1', dark: '#3794FF', hcDark: '#21A6FF', hcLight: '#0F4A85' },
+	{ light: '#006AB1', dark: '#6B8E23', hcDark: '#21A6FF', hcLight: '#0F4A85' },
 	nls.localize('textLinkActiveForeground', "Foreground color for links in text when clicked on and on mouse hover."));
 
 export const textSeparatorForeground = registerColor('textSeparator.foreground',
@@ -80,7 +80,7 @@ export const textBlockQuoteBackground = registerColor('textBlockQuote.background
 	nls.localize('textBlockQuoteBackground', "Background color for block quotes in text."));
 
 export const textBlockQuoteBorder = registerColor('textBlockQuote.border',
-	{ light: '#007acc80', dark: '#007acc80', hcDark: Color.white, hcLight: '#292929' },
+	{ light: '#007acc80', dark: '#6B8E23', hcDark: Color.white, hcLight: '#292929' },
 	nls.localize('textBlockQuoteBorder', "Border color for block quotes in text."));
 
 

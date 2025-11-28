@@ -352,6 +352,8 @@ import './contrib/welcomeViews/common/newFile.contribution.js';
 
 // Winter Welcome
 import './contrib/winterWelcome/browser/winterWelcome.contribution.js';
+import './contrib/winterAI/browser/winterAI.contribution.js';
+
 
 
 // Call Hierarchy

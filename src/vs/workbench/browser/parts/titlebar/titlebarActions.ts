@@ -276,3 +276,17 @@ export const GLOBAL_ACTIVITY_TITLE_ACTION: IAction = {
 	enabled: true,
 	run: function (): void { }
 };
+
+import { Codicon } from '../../../../base/common/codicons.js';
+import { ThemeIcon } from '../../../../base/common/themables.js';
+
+export const WINTER_LOGIN_ACTION_ID = 'winter.actions.login';
+
+export const WINTER_LOGIN_ACTION: IAction = {
+	id: WINTER_LOGIN_ACTION_ID,
+	label: localize('login', "Login"),
+	tooltip: localize('login', "Login"),
+	class: ThemeIcon.asClassName(Codicon.account),
+	enabled: true,
+	run: function (): void { }
+};

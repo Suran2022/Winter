@@ -1,0 +1,352 @@
+.winter-ai-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	background-color: var(--vscode-sideBar-background);
+	color: var(--vscode-foreground);
+	font-family: var(--vscode-font-family);
+}
+
+/* Welcome / Empty State */
+.winter-ai-welcome {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 20px;
+	text-align: center;
+	color: var(--vscode-descriptionForeground);
+}
+
+.winter-ai-welcome-icon {
+	font-size: 64px !important;
+	/* Normal size */
+	width: 64px !important;
+	height: 64px !important;
+	margin-bottom: 16px;
+	/* Reduced spacing */
+	color: var(--vscode-foreground);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.winter-ai-welcome-icon::before {
+	font-size: 64px !important;
+}
+
+.winter-ai-welcome-title {
+	font-size: 18px;
+	font-weight: 600;
+	margin-bottom: 8px;
+	color: var(--vscode-foreground);
+}
+
+.winter-ai-welcome-subtitle {
+	font-size: 13px;
+	margin-bottom: 24px;
+	opacity: 0.8;
+	max-width: 300px;
+	line-height: 1.4;
+	color: #F5F5DC;
+	/* Beige/Off-white */
+}
+
+.winter-ai-link {
+	color: #6B8E23;
+	/* Olive Green */
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.winter-ai-link:hover {
+	text-decoration: underline;
+}
+
+/* Suggested Actions */
+.winter-ai-suggestions-wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin-bottom: 20px;
+	width: 100%;
+	padding: 0 20px;
+}
+
+.winter-ai-suggestions-header {
+	align-self: flex-start;
+	font-size: 11px;
+	text-transform: uppercase;
+	opacity: 0.7;
+	font-weight: 600;
+}
+
+.winter-ai-suggestions-buttons {
+	display: flex;
+	gap: 8px;
+}
+
+.winter-ai-suggestion-btn {
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: 1px solid var(--vscode-button-border, transparent);
+	padding: 6px 12px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 12px;
+	transition: background-color 0.2s;
+}
+
+.winter-ai-suggestion-btn:hover {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Input Area */
+.winter-ai-input-container {
+	padding: 16px;
+	/* border-top: 1px solid var(--vscode-panel-border); */
+}
+
+.winter-ai-input-box {
+	position: relative;
+	background-color: var(--vscode-input-background);
+	border-radius: 6px;
+	padding: 8px 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	/* Create space for the gradient border */
+	border: 1px solid var(--vscode-input-border);
+	background-clip: padding-box;
+}
+
+.winter-ai-input-box.focused {
+	border-color: transparent;
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+.winter-ai-input-box.focused::before {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	/* Slightly wider border for better visibility */
+	border-radius: 8px;
+	/* Slightly larger than parent */
+	padding: 2px;
+	/* Border width */
+	background: linear-gradient(var(--angle),
+			#6B8E23,
+			/* Olive Green */
+			#F5F5DC,
+			/* Beige/Off-white */
+			#6B8E23
+			/* Olive Green */
+		);
+	-webkit-mask:
+		linear-gradient(#fff 0 0) content-box,
+		linear-gradient(#fff 0 0);
+	-webkit-mask-composite: xor;
+	mask-composite: exclude;
+	pointer-events: none;
+	animation: rotate-gradient 2s linear infinite;
+	/* 2s for faster rotation */
+}
+
+/* Fallback for browsers not supporting @property or complex masks perfectly,
+   though VS Code (Electron) supports them.
+   Alternative approach using pseudo-element behind if mask fails: */
+
+@property --angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes rotate-gradient {
+	to {
+		--angle: 360deg;
+	}
+}
+
+.winter-ai-textarea {
+	background: transparent;
+	border: none !important;
+	outline: none !important;
+	box-shadow: none !important;
+	color: var(--vscode-input-foreground);
+	font-family: inherit;
+	resize: none;
+	min-height: 24px;
+	font-size: 13px;
+	line-height: 1.4;
+	width: 100%;
+	/* Ensure full width */
+}
+
+.winter-ai-textarea:focus {
+	outline: none !important;
+	border: none !important;
+	box-shadow: none !important;
+}
+
+.winter-ai-context-btn {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	padding: 4px 8px;
+	border: 1px solid var(--vscode-input-border);
+	border-radius: 4px;
+	width: fit-content;
+	cursor: pointer;
+	background-color: var(--vscode-editor-background);
+	color: var(--vscode-descriptionForeground);
+}
+
+.winter-ai-context-btn:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.winter-ai-textarea {
+	background: transparent;
+	border: none;
+	color: var(--vscode-input-foreground);
+	font-family: inherit;
+	resize: none;
+	min-height: 24px;
+	outline: none;
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.winter-ai-textarea::placeholder {
+	color: var(--vscode-input-placeholderForeground);
+}
+
+.winter-ai-input-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-top: 4px;
+}
+
+.winter-ai-input-actions-left,
+.winter-ai-input-actions-right {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.winter-ai-dropdown {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 11px;
+	cursor: pointer;
+	color: #F5F5DC;
+	/* Beige/Off-white */
+	font-weight: 500;
+}
+
+.winter-ai-dropdown:hover {
+	opacity: 0.8;
+}
+
+.winter-ai-icon-btn {
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--vscode-icon-foreground);
+}
+
+.winter-ai-icon-btn:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.winter-ai-send-btn {
+	color: #6B8E23 !important;
+}
+
+/* Agent Dropdown Menu */
+.winter-ai-agent-menu {
+	position: absolute;
+	bottom: 100%;
+	/* Position directly above */
+	left: 0;
+	background-color: var(--vscode-menu-background);
+	border: 1px solid var(--vscode-menu-border);
+	border-radius: 4px;
+	min-width: 140px;
+	/* Smaller min-width */
+	width: max-content;
+	/* Adapt to content */
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+	z-index: 1000;
+	overflow: hidden;
+}
+
+.winter-ai-agent-menu-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	color: #F5F5DC;
+	/* Beige text */
+	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	position: relative;
+}
+
+.winter-ai-agent-menu-item.selected {
+	background-color: #6B8E23;
+	/* Olive Green background */
+	color: white;
+}
+
+.winter-ai-agent-menu-item.selected .codicon {
+	color: white;
+}
+
+.winter-ai-agent-menu-separator {
+	height: 1px;
+	background-color: var(--vscode-menu-separatorBackground);
+	margin: 0;
+}
+
+.winter-ai-agent-menu-item.configure {
+	color: #6B8E23;
+	/* Olive Green text */
+}
+
+.winter-ai-agent-menu-item .codicon {
+	font-size: 16px;
+	flex-shrink: 0;
+}
+
+.winter-ai-agent-menu-item .winter-ai-menu-shortcut {
+	margin-left: auto;
+	font-size: 11px;
+	opacity: 0.6;
+	font-family: monospace;
+}
+
+/* Full Screen Layout */
+@media (min-width: 600px) {
+	.winter-ai-suggestions-wrapper {
+		width: 70% !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+		padding: 0 !important;
+	}
+
+	.winter-ai-input-box {
+		width: 70% !important;
+		margin-left: auto !important;
+		margin-right: auto !important;
+	}
+}
