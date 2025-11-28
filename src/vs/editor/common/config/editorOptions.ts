@@ -5045,7 +5045,7 @@ class EditorSuggest extends BaseEditorOption<EditorOption.suggest, ISuggestOptio
 			showFunctions: true,
 			showConstructors: true,
 			showDeprecated: true,
-			matchOnWordStartOnly: true,
+			matchOnWordStartOnly: false,
 			showFields: true,
 			showVariables: true,
 			showClasses: true,
@@ -5166,7 +5166,7 @@ class EditorSuggest extends BaseEditorOption<EditorOption.suggest, ISuggestOptio
 				},
 				'editor.suggest.matchOnWordStartOnly': {
 					type: 'boolean',
-					default: true,
+					default: false,
 					markdownDescription: nls.localize('editor.suggest.matchOnWordStartOnly', "When enabled IntelliSense filtering requires that the first character matches on a word start. For example, `c` on `Console` or `WebContext` but _not_ on `description`. When disabled IntelliSense will show more results but still sorts them by match quality.")
 				},
 				'editor.suggest.showFields': {
