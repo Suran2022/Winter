@@ -1,0 +1,59 @@
+{
+    "name": "winter-authentication",
+    "displayName": "Winter Authentication",
+    "description": "Authentication provider for Winter",
+    "version": "1.0.0",
+    "publisher": "winter",
+    "license": "MIT",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "*"
+    ],
+    "main": "./out/extension.js",
+    "browser": "./dist/browser/extension.js",
+    "contributes": {
+        "authentication": [
+            {
+                "id": "winter",
+                "label": "Winter Account"
+            }
+        ],
+        "commands": [
+            {
+                "command": "winter.signIn",
+                "title": "Sign in to Winter"
+            },
+            {
+                "command": "winter.signOut",
+                "title": "Sign out of Winter"
+            }
+        ],
+        "menus": {
+            "accounts/context": [
+                {
+                    "command": "winter.signIn",
+                    "group": "1_winter",
+                    "when": "winterAccountState != signedIn"
+                }
+            ]
+        }
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./"
+    },
+    "devDependencies": {
+        "@types/node": "^18.x",
+        "@types/vscode": "^1.85.0",
+        "typescript": "^5.3.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/Suran2022/Winter.git"
+    }
+}

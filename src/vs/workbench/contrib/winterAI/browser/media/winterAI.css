@@ -104,8 +104,9 @@
 
 /* Input Area */
 .winter-ai-input-container {
-	padding: 16px;
-	/* border-top: 1px solid var(--vscode-panel-border); */
+	padding: 6px;
+	display: flex;
+	justify-content: center;
 }
 
 .winter-ai-input-box {
@@ -119,6 +120,8 @@
 	/* Create space for the gradient border */
 	border: 1px solid var(--vscode-input-border);
 	background-clip: padding-box;
+	width: 100%;
+	max-width: 100%;
 }
 
 .winter-ai-input-box.focused {
@@ -236,7 +239,7 @@
 .winter-ai-input-actions-right {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 6px;
 }
 
 .winter-ai-dropdown {
@@ -335,18 +338,246 @@
 	font-family: monospace;
 }
 
-/* Full Screen Layout */
-@media (min-width: 600px) {
+/* Responsive Layout */
+/* 当侧边栏宽度 > 70% 时（约 840px），限制内容宽度为 85% */
+@media (min-width: 840px) {
 	.winter-ai-suggestions-wrapper {
-		width: 70% !important;
+		width: 85% !important;
+		max-width: 85% !important;
 		margin-left: auto !important;
 		margin-right: auto !important;
 		padding: 0 !important;
 	}
 
 	.winter-ai-input-box {
-		width: 70% !important;
-		margin-left: auto !important;
-		margin-right: auto !important;
+		width: 85% !important;
+		max-width: 85% !important;
 	}
+
+	.winter-ai-messages {
+		width: 85%;
+		max-width: 85%;
+		margin-left: auto;
+		margin-right: auto;
+	}
+}
+
+/* Chat Messages Area */
+.winter-ai-messages {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	/* 标准布局 */
+	justify-content: flex-start;
+	/* 内容从顶部开始 */
+	gap: 16px;
+	padding: 16px;
+	/* 恢复正常 padding */
+	/* 移除 padding-bottom，改用伪元素 */
+	overflow-y: auto;
+	max-height: calc(100vh - 200px);
+}
+
+.winter-ai-message {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	scroll-margin-top: 40px;
+	/* 关键：scrollIntoView 时自动留出顶部间距 */
+}
+
+/* 使用伪元素创建底部巨大的滚动空间，确保最后一条消息能置顶，且不影响布局 */
+.winter-ai-messages::after {
+	content: '';
+	display: block;
+	min-height: 0;
+	/* 默认不占用空间，由 JS 动态控制 padding */
+	flex-shrink: 0;
+}
+
+/* 当内容溢出时，通过 JS 添加此类，启用底部空间 */
+.winter-ai-messages.has-overflow::after {
+	min-height: 80vh;
+}
+
+/* 自定义滚动条样式 */
+.winter-ai-messages::-webkit-scrollbar {
+	width: 6px;
+	/* 非常细的滚动条 */
+}
+
+.winter-ai-messages::-webkit-scrollbar-track {
+	background: transparent;
+	/* 轨道透明 */
+}
+
+.winter-ai-messages::-webkit-scrollbar-thumb {
+	background-color: #6B8E23;
+	/* 橄榄绿色 */
+	border-radius: 3px;
+	/* 圆角 */
+}
+
+.winter-ai-messages::-webkit-scrollbar-thumb:hover {
+	background-color: #556b1e;
+	/* 悬停时稍深 */
+}
+
+/* Firefox 滚动条样式 */
+.winter-ai-messages {
+	scrollbar-width: thin;
+	scrollbar-color: #6B8E23 transparent;
+}
+
+.winter-ai-message {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.winter-ai-message.user .winter-ai-message-content {
+	background-color: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border);
+	border-radius: 12px;
+	padding: 10px 14px;
+	max-width: 80%;
+	align-self: flex-end;
+	word-wrap: break-word;
+	box-sizing: border-box;
+}
+
+.winter-ai-message.assistant .winter-ai-message-content {
+	color: var(--vscode-foreground);
+	max-width: 100%;
+	line-height: 1.6;
+	word-wrap: break-word;
+	box-sizing: border-box;
+}
+
+/* Loading Spinner */
+.winter-ai-loading-spinner {
+	width: 20px;
+	height: 20px;
+	border: 2px solid transparent;
+	border-top-color: #6B8E23;
+	/* Olive Green */
+	border-radius: 50%;
+	animation: spin 0.8s linear infinite;
+	margin: 4px 0;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Markdown Rendered Content */
+.winter-ai-message.assistant .rendered-markdown {
+	font-size: 13px;
+}
+
+.winter-ai-message.assistant .rendered-markdown code {
+	background-color: var(--vscode-textCodeBlock-background);
+	border: 1px solid var(--vscode-textBlockQuote-border);
+	border-radius: 3px;
+	padding: 1px 4px;
+	font-family: var(--vscode-editor-font-family);
+	font-size: 12px;
+}
+
+.winter-ai-message.assistant .rendered-markdown pre {
+	background-color: var(--vscode-textCodeBlock-background);
+	padding: 12px;
+	overflow-x: auto;
+	margin: 0;
+	/* 移除 margin，由 wrapper 控制 */
+	border-radius: 0 0 4px 4px;
+	/* 只有底部圆角 */
+}
+
+/* Code Block Styling */
+.winter-ai-code-block {
+	margin: 8px 0;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 4px;
+	overflow: hidden;
+}
+
+.winter-ai-code-header {
+	background-color: var(--vscode-editor-background);
+	border-bottom: 1px solid var(--vscode-widget-border);
+	padding: 4px 12px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+	height: 28px;
+}
+
+.winter-ai-code-lang {
+	font-weight: 500;
+}
+
+.winter-ai-message.assistant .rendered-markdown pre code {
+	background: none;
+	border: none;
+	padding: 0;
+}
+
+.winter-ai-message.assistant .rendered-markdown a {
+	color: var(--vscode-textLink-foreground);
+	text-decoration: none;
+}
+
+.winter-ai-message.assistant .rendered-markdown a:hover {
+	text-decoration: underline;
+}
+
+.winter-ai-message.assistant .rendered-markdown ul,
+.winter-ai-message.assistant .rendered-markdown ol {
+	margin: 8px 0;
+	padding-left: 24px;
+}
+
+.winter-ai-message.assistant .rendered-markdown li {
+	margin: 4px 0;
+}
+
+.winter-ai-message.assistant .rendered-markdown h1,
+.winter-ai-message.assistant .rendered-markdown h2,
+.winter-ai-message.assistant .rendered-markdown h3,
+.winter-ai-message.assistant .rendered-markdown h4,
+.winter-ai-message.assistant .rendered-markdown h5,
+.winter-ai-message.assistant .rendered-markdown h6 {
+	margin: 12px 0 8px 0;
+	font-weight: 600;
+}
+
+.winter-ai-message.assistant .rendered-markdown p {
+	margin: 8px 0;
+}
+
+.winter-ai-message.assistant .rendered-markdown blockquote {
+	border-left: 4px solid var(--vscode-textBlockQuote-border);
+	padding-left: 12px;
+	margin: 8px 0;
+	color: var(--vscode-textBlockQuote-foreground);
+}
+
+.winter-ai-message.assistant .rendered-markdown table {
+	border-collapse: collapse;
+	margin: 8px 0;
+}
+
+.winter-ai-message.assistant .rendered-markdown th,
+.winter-ai-message.assistant .rendered-markdown td {
+	border: 1px solid var(--vscode-textBlockQuote-border);
+	padding: 6px 12px;
+}
+
+.winter-ai-message.assistant .rendered-markdown th {
+	background-color: var(--vscode-textCodeBlock-background);
+	font-weight: 600;
 }

@@ -33,7 +33,7 @@ import { CommandCenterControl } from './commandCenterControl.js';
 import { Categories } from '../../../../platform/action/common/actionCommonCategories.js';
 import { WorkbenchToolBar } from '../../../../platform/actions/browser/toolbar.js';
 import { ACCOUNTS_ACTIVITY_ID, GLOBAL_ACTIVITY_ID } from '../../../common/activity.js';
-import { AccountsActivityActionViewItem, isAccountsActionVisible, SimpleAccountActivityActionViewItem, SimpleGlobalActivityActionViewItem } from '../globalCompositeBar.js';
+import { AccountsActivityActionViewItem, SimpleAccountActivityActionViewItem, SimpleGlobalActivityActionViewItem } from '../globalCompositeBar.js';
 import { HoverPosition } from '../../../../base/browser/ui/hover/hoverWidget.js';
 import { IEditorGroupsContainer, IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
 import { ActionRunner, IAction } from '../../../../base/common/actions.js';
@@ -47,11 +47,11 @@ import { ResolvedKeybinding } from '../../../../base/common/keybindings.js';
 import { EditorCommandsContextActionRunner } from '../editor/editorTabsControl.js';
 import { IEditorCommandsContext, IEditorPartOptionsChangeEvent, IToolbarActions } from '../../../common/editor.js';
 import { CodeWindow, mainWindow } from '../../../../base/browser/window.js';
-import { ACCOUNTS_ACTIVITY_TILE_ACTION, GLOBAL_ACTIVITY_TITLE_ACTION, WINTER_LOGIN_ACTION, WINTER_LOGIN_ACTION_ID } from './titlebarActions.js';
+import { ACCOUNTS_ACTIVITY_TILE_ACTION, GLOBAL_ACTIVITY_TITLE_ACTION } from './titlebarActions.js';
 
 import { IView } from '../../../../base/browser/ui/grid/grid.js';
 import { createInstantHoverDelegate } from '../../../../base/browser/ui/hover/hoverDelegateFactory.js';
-import { ActionViewItem, IBaseActionViewItemOptions } from '../../../../base/browser/ui/actionbar/actionViewItems.js';
+import { IBaseActionViewItemOptions } from '../../../../base/browser/ui/actionbar/actionViewItems.js';
 
 import { IHoverDelegate } from '../../../../base/browser/ui/hover/hoverDelegate.js';
 import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
@@ -219,32 +219,7 @@ export class BrowserTitleService extends MultiWindowParts<BrowserTitlebarPart> i
 	//#endregion
 }
 
-class WinterLoginActionViewItem extends ActionViewItem {
-	constructor(
-		action: IAction,
-		options: IBaseActionViewItemOptions,
-		@IContextMenuService private readonly contextMenuService: IContextMenuService
-	) {
-		super(undefined, action, { ...options, icon: true, label: false });
-	}
 
-	override onClick(event: unknown): void {
-		this.contextMenuService.showContextMenu({
-			getAnchor: () => this.element!,
-			anchorAlignment: AnchorAlignment.RIGHT,
-			getActions: () => [
-				{
-					id: 'winter.login.option',
-					label: 'Sign in to Winter',
-					enabled: true,
-					class: undefined,
-					tooltip: '',
-					run: () => { console.log('Sign in clicked'); }
-				}
-			]
-		});
-	}
-}
 
 export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 
@@ -633,10 +608,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			}
 		}
 
-		// Check extensions
-		if (action.id === WINTER_LOGIN_ACTION_ID) {
-			return this.instantiationService.createInstance(WinterLoginActionViewItem, action, options);
-		}
+
 
 		return createActionViewItem(this.instantiationService, action, { ...options, menuAsChild: false });
 
@@ -715,16 +687,15 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
 			}
 
 			// --- Activity Actions (always at the end)
-			if (this.activityActionsEnabled) {
-				if (isAccountsActionVisible(this.storageService)) {
-					actions.primary.push(ACCOUNTS_ACTIVITY_TILE_ACTION);
-				}
+			// --- Activity Actions (always at the end)
+			// Force add accounts action as requested
+			actions.primary.push(ACCOUNTS_ACTIVITY_TILE_ACTION);
 
+			if (this.activityActionsEnabled) {
 				actions.primary.push(GLOBAL_ACTIVITY_TITLE_ACTION);
 			}
 
-			// --- Winter Login Action
-			actions.primary.push(WINTER_LOGIN_ACTION);
+
 
 			this.actionToolBar.setActions(prepareActions(actions.primary), prepareActions(actions.secondary));
 		};
