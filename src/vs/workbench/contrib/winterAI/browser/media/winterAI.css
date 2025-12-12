@@ -581,3 +581,398 @@
 	background-color: var(--vscode-textCodeBlock-background);
 	font-weight: 600;
 }
+
+/* ==================== Agent Mode Styles ==================== */
+
+/* Thinking Process */
+.winter-ai-thinking {
+	margin: 12px 0;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 6px;
+	overflow: hidden;
+	background-color: var(--vscode-editor-background);
+}
+
+.winter-ai-thinking-header {
+	position: relative;
+	padding: 10px 14px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background-color: rgba(107, 142, 35, 0.1);
+	/* Olive Green tint */
+	overflow: hidden;
+	user-select: none;
+}
+
+.winter-ai-thinking-header:hover {
+	background-color: rgba(107, 142, 35, 0.15);
+}
+
+/* Shimmer/光扫效果 */
+.winter-ai-thinking-shimmer {
+	position: absolute;
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 100%;
+	background: linear-gradient(90deg,
+			transparent 0%,
+			rgba(245, 245, 220, 0.3) 50%,
+			/* Beige shimmer */
+			transparent 100%);
+	animation: shimmer 2s infinite;
+	pointer-events: none;
+}
+
+@keyframes shimmer {
+	0% {
+		left: -100%;
+	}
+
+	100% {
+		left: 100%;
+	}
+}
+
+.winter-ai-thinking-label {
+	font-weight: 500;
+	font-size: 13px;
+	color: #6B8E23;
+	/* Olive Green */
+	flex: 1;
+}
+
+.winter-ai-thinking-chevron {
+	color: var(--vscode-icon-foreground);
+	transition: transform 0.2s;
+}
+
+.winter-ai-thinking-content {
+	padding: 12px 14px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--vscode-descriptionForeground);
+	max-height: 60px;
+	overflow-y: auto;
+	transition: max-height 0.3s ease, padding 0.3s ease;
+	border-top: 1px solid var(--vscode-widget-border);
+}
+
+.winter-ai-thinking-content.collapsed {
+	max-height: 0;
+	padding: 0 14px;
+	overflow: hidden;
+	border-top: none;
+}
+
+/* Tool Call Styles */
+.winter-ai-tool-call {
+	margin: 12px 0;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 6px;
+	overflow: hidden;
+	background-color: var(--vscode-editor-background);
+}
+
+.winter-ai-tool-header {
+	padding: 10px 14px;
+	background-color: rgba(107, 142, 35, 0.08);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border-bottom: 1px solid var(--vscode-widget-border);
+}
+
+.winter-ai-tool-header span:first-child {
+	color: #6B8E23;
+	/* Olive Green icon */
+	font-size: 16px;
+}
+
+.winter-ai-tool-name {
+	font-weight: 500;
+	font-size: 13px;
+	color: var(--vscode-foreground);
+	font-family: var(--vscode-editor-font-family);
+}
+
+.winter-ai-tool-args {
+	padding: 12px 14px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: var(--vscode-descriptionForeground);
+	font-family: var(--vscode-editor-font-family);
+}
+
+.winter-ai-tool-arg {
+	margin: 4px 0;
+	padding: 4px 8px;
+	background-color: var(--vscode-textCodeBlock-background);
+	border-radius: 4px;
+	word-break: break-all;
+}
+
+/* File Path (clickable) */
+.winter-ai-file-path {
+	display: inline-block;
+	padding: 4px 8px;
+	background-color: rgba(107, 142, 35, 0.15);
+	border: 1px solid #6B8E23;
+	border-radius: 4px;
+	color: #6B8E23;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background-color 0.2s;
+	font-family: var(--vscode-editor-font-family);
+}
+
+.winter-ai-file-path:hover {
+	background-color: rgba(107, 142, 35, 0.25);
+	text-decoration: underline;
+}
+
+/* File Modification Confirm Dialog */
+.winter-ai-file-confirm {
+	margin: 16px 0;
+	padding: 16px;
+	border: 2px solid #6B8E23;
+	border-radius: 8px;
+	background-color: var(--vscode-editor-background);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.winter-ai-file-confirm-title {
+	font-size: 14px;
+	font-weight: 600;
+	margin-bottom: 12px;
+	color: #6B8E23;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.winter-ai-file-preview {
+	margin: 12px 0;
+	max-height: 300px;
+	overflow-y: auto;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 4px;
+}
+
+.winter-ai-file-preview pre {
+	margin: 0;
+	padding: 12px;
+	background-color: var(--vscode-textCodeBlock-background);
+	font-size: 12px;
+	line-height: 1.5;
+}
+
+.winter-ai-file-preview code {
+	font-family: var(--vscode-editor-font-family);
+	color: var(--vscode-foreground);
+}
+
+.winter-ai-file-confirm-buttons {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+	margin-top: 12px;
+}
+
+.winter-ai-btn {
+	padding: 6px 16px;
+	border-radius: 4px;
+	font-size: 13px;
+	font-weight: 500;
+	cursor: pointer;
+	border: none;
+	transition: background-color 0.2s;
+}
+
+.winter-ai-btn-primary {
+	background-color: #6B8E23;
+	color: white;
+}
+
+/* Toolkit Styles */
+.winter-ai-step-container {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 0;
+	font-size: 13px;
+	font-family: var(--vscode-editor-font-family);
+}
+
+.winter-ai-file-pill {
+	background-color: var(--vscode-textCodeBlock-background);
+	padding: 2px 6px;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-widget-border);
+	font-family: var(--vscode-editor-font-family);
+	font-size: 12px;
+	color: var(--vscode-textLink-foreground);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 300px;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.winter-ai-file-pill:hover {
+	background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+/* Status Indicators */
+.winter-ai-status-indicator {
+	display: inline-block;
+	width: 12px;
+	height: 12px;
+	background-color: #6B8E23;
+	/* Olive Green */
+	border-radius: 50%;
+	position: relative;
+	box-shadow: 0 0 5px rgba(107, 142, 35, 0.6);
+}
+
+.winter-ai-status-indicator::after {
+	content: '';
+	position: absolute;
+	top: -6px;
+	left: -6px;
+	right: -6px;
+	bottom: -6px;
+	border-radius: 50%;
+	border: 2px solid #6B8E23;
+	opacity: 0.8;
+	animation: winter-ai-pulse 2s infinite;
+}
+
+@keyframes winter-ai-pulse {
+	0% {
+		transform: scale(0.6);
+		opacity: 0.8;
+		box-shadow: 0 0 0 0 rgba(107, 142, 35, 0.7);
+	}
+
+	70% {
+		transform: scale(1.4);
+		opacity: 0;
+		box-shadow: 0 0 10px 10px rgba(107, 142, 35, 0);
+	}
+
+	100% {
+		transform: scale(0.6);
+		opacity: 0;
+	}
+}
+
+/* Confirmation Box - Olive Style to match branding */
+.winter-ai-confirmation {
+	background-color: rgba(107, 142, 35, 0.1);
+	border: 1px solid rgba(107, 142, 35, 0.4);
+	border-radius: 6px;
+	padding: 12px;
+	margin: 8px 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.winter-ai-confirmation-title {
+	color: #9ACD32;
+	/* YellowGreen - lighter olive for dark mode visibility */
+	font-weight: 500;
+	font-size: 13px;
+}
+
+.winter-ai-confirmation-actions {
+	display: flex;
+	gap: 8px;
+	justify-content: flex-end;
+}
+
+.winter-ai-confirm-btn {
+	padding: 5px 12px;
+	border-radius: 4px;
+	border: none;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.winter-ai-confirm-btn.reject {
+	background-color: transparent;
+	color: #cccccc;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.winter-ai-confirm-btn.reject:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+}
+
+.winter-ai-confirm-btn.trust {
+	background-color: #6B8E23;
+	/* Olive Green */
+	color: white;
+}
+
+.winter-ai-confirm-btn.trust:hover {
+	background-color: #556b1e;
+}
+
+
+.winter-ai-btn-primary:hover {
+	background-color: #556b1e;
+}
+
+.winter-ai-btn-secondary {
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: 1px solid var(--vscode-button-border, transparent);
+}
+
+.winter-ai-btn-secondary:hover {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+/* Terminal Style (for execute_command) */
+.winter-ai-terminal {
+	margin: 12px 0;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 6px;
+	overflow: hidden;
+	background-color: #1e1e1e;
+	font-family: var(--vscode-editor-font-family);
+}
+
+.winter-ai-terminal-header {
+	padding: 8px 12px;
+	background-color: #2d2d2d;
+	color: #cccccc;
+	font-size: 12px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	border-bottom: 1px solid #3e3e3e;
+}
+
+.winter-ai-terminal-content {
+	padding: 12px;
+	font-size: 12px;
+	line-height: 1.5;
+	color: #cccccc;
+	max-height: 200px;
+	overflow-y: auto;
+}
+
+.winter-ai-terminal-content pre {
+	margin: 0;
+	white-space: pre-wrap;
+	word-wrap: break-word;
+}

@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
+import * as crypto from 'crypto';
 import { WinterAuthenticationProvider } from './winterAuthProvider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -203,6 +204,180 @@ export function activate(context: vscode.ExtensionContext) {
             });
         }
     ));
+
+    // Send Agent request command (called from Winter AI view)
+    context.subscriptions.push(vscode.commands.registerCommand('winter.sendAgentRequest',
+        async (accessToken: string, message: string) => {
+            return new Promise((resolve, reject) => {
+                const http = require('http');
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+                const postData = JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'user', content: message }
+                    ],
+                    enableThinking: true,
+                    tools: [], // 将由后端自动添加工具定义
+                    maxToolCalls: 20,
+                    workspaceRoot: workspaceRoot
+                });
+
+                const options = {
+                    hostname: '127.0.0.1',
+                    port: 8081,
+                    path: '/api/chat/agent',
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(postData)
+                    }
+                };
+
+                const responses: any[] = [];
+
+                const req = http.request(options, (res: any) => {
+                    let buffer = '';
+
+                    res.on('data', (chunk: any) => {
+                        buffer += chunk.toString();
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('data:')) {
+                                const jsonStr = trimmedLine.substring(5).trim();
+                                if (jsonStr && jsonStr !== '[DONE]') {
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        responses.push(data);
+                                    } catch (e) {
+                                        console.error('Failed to parse Agent response:', e);
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    res.on('end', () => {
+                        resolve(responses);
+                    });
+                });
+
+                req.on('error', (e: Error) => {
+                    reject(e);
+                });
+
+                req.write(postData);
+                req.end();
+            });
+        }
+    ));
+
+    context.subscriptions.push(vscode.commands.registerCommand('winter.confirmAgentAction', async (requestId: string, action: string, accessToken: string) => {
+        try {
+            await fetch(`http://127.0.0.1:8081/api/chat/agent/confirm?requestId=${requestId}&action=${action}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+        } catch (e) {
+            console.error('Failed to confirm agent action:', e);
+        }
+    }));
+
+
+
+    // Agent Request State
+    const activeRequests = new Map<string, { chunks: string[], done: boolean, error?: string }>();
+
+    context.subscriptions.push(vscode.commands.registerCommand('winter.startAgentRequest', async (accessToken: string, message: string, workspaceRoot: string) => {
+        const id = crypto.randomUUID();
+        activeRequests.set(id, { chunks: [], done: false });
+
+        // Start async request
+        (async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:8081/api/chat/agent', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-chat',
+                        messages: [{ role: 'user', content: message }],
+                        enableThinking: true,
+                        tools: [],
+                        maxToolCalls: 20,
+                        workspaceRoot: workspaceRoot
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                if (!response.body) {
+                    throw new Error('No response body');
+                }
+
+                // @ts-ignore
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const text = decoder.decode(value, { stream: true });
+                    const req = activeRequests.get(id);
+                    if (req) {
+                        req.chunks.push(text);
+                    } else {
+                        break; // Request cancelled or cleaned up
+                    }
+                }
+
+                const req = activeRequests.get(id);
+                if (req) req.done = true;
+
+            } catch (e: any) {
+                const req = activeRequests.get(id);
+                if (req) {
+                    req.error = e.message || String(e);
+                    req.done = true;
+                }
+            }
+        })();
+
+        return id;
+    }));
+
+    context.subscriptions.push(vscode.commands.registerCommand('winter.getAgentResponse', (id: string) => {
+        const req = activeRequests.get(id);
+        if (!req) {
+            return { done: true, chunks: [] };
+        }
+
+        const result = {
+            chunks: [...req.chunks],
+            done: req.done,
+            error: req.error
+        };
+
+        // Clear read chunks
+        req.chunks = [];
+
+        // Cleanup if done
+        if (req.done) {
+            activeRequests.delete(id);
+        }
+
+        return result;
+    }));
 }
 
 export function deactivate() { }

@@ -22,6 +22,14 @@ import { ThemeIcon } from '../../../../base/common/themables.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IMarkdownRendererService } from '../../../../platform/markdown/browser/markdownRenderer.js';
 import { MarkdownString } from '../../../../base/common/htmlContent.js';
+import { URI } from '../../../../base/common/uri.js';
+import { getIconClasses } from '../../../../editor/common/services/getIconClasses.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { IconLabel } from '../../../../base/browser/ui/iconLabel/iconLabel.js';
+import { IModelService } from '../../../../editor/common/services/model.js';
+import { ILanguageService } from '../../../../editor/common/languages/language.js';
+import { FileKind } from '../../../../platform/files/common/files.js';
+
 
 export class WinterAIViewPane extends ViewPane {
 
@@ -29,6 +37,9 @@ export class WinterAIViewPane extends ViewPane {
     private messagesContainer!: HTMLElement;
     private inputBox!: HTMLElement;
     private inputElement!: HTMLTextAreaElement;
+
+    // 渲染队列：确保消息和步骤按顺序展示
+    private renderQueue: Promise<void> = Promise.resolve();
 
     constructor(
         options: IViewPaneOptions,
@@ -45,6 +56,9 @@ export class WinterAIViewPane extends ViewPane {
         @INotificationService private readonly notificationService: INotificationService,
         @ICommandService private readonly commandService: ICommandService,
         @IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
+        @IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+        @IModelService private readonly modelService: IModelService,
+        @ILanguageService private readonly languageService: ILanguageService,
     ) {
         super(options, keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService, instantiationService, openerService, themeService, hoverService);
     }
@@ -300,21 +314,11 @@ export class WinterAIViewPane extends ViewPane {
 
     /**
      * 方法名: handleSendMessage
-     * 说明: 处理发送消息事件
-     */
-    /**
-     * 方法名: handleSendMessage
-     * 说明: 处理发送消息事件
+     * 说明: 处理发送消息事件，根据当前模式（Ask/Agent）调用不同的 API
      */
     private async handleSendMessage(): Promise<void> {
         const message = this.inputElement.value.trim();
         if (!message) {
-            return;
-        }
-
-        // 0. 检查当前模式是否为 Ask
-        if (this.currentAgentMode !== 'Ask') {
-            this.notificationService.info(`${this.currentAgentMode} 模式即将开放，敬请期待！`);
             return;
         }
 
@@ -336,36 +340,83 @@ export class WinterAIViewPane extends ViewPane {
         // 4. 显示用户消息
         const userMessageElement = this.displayMessage('user', message);
 
-        // 5. 显示 AI 加载状态
+        // 5. 根据模式调用不同的处理逻辑
+        if (this.currentAgentMode === 'Agent') {
+            // Agent 模式：支持工具调用
+            await this.handleAgentMode(message, session.accessToken, userMessageElement);
+        } else if (this.currentAgentMode === 'Ask') {
+            // Ask 模式：仅聊天
+            await this.handleAskMode(message, session.accessToken, userMessageElement);
+        } else {
+            // Edit 模式或其他模式：暂未开放
+            this.notificationService.info(`${this.currentAgentMode} 模式即将开放，敬请期待！`);
+            // 移除已显示的用户消息
+            userMessageElement.remove();
+        }
+    }
+
+    /**
+     * 方法名: handleAskMode
+     * 参数: message - 用户消息, accessToken - Access Token, userMessageElement - 用户消息元素
+     * 说明: 处理 Ask 模式的聊天（原有逻辑）
+     */
+    private async handleAskMode(message: string, accessToken: string, userMessageElement: HTMLElement): Promise<void> {
+        // 显示 AI 加载状态
         const aiMessageElement = this.displayMessage('assistant', '');
         const loadingSpinner = DOM.append(aiMessageElement, DOM.$('.winter-ai-loading-spinner'));
 
-        // 6. 关键：动态调整底部空间并滚动
-        // 先移除 overflow 类，检查自然高度是否溢出
+        // 动态调整底部空间并滚动
         this.messagesContainer.classList.remove('has-overflow');
 
-        // 使用 setTimeout 确保 DOM 更新后计算高度
         setTimeout(() => {
             const isOverflowing = this.messagesContainer.scrollHeight > this.messagesContainer.clientHeight;
 
             if (isOverflowing) {
-                // 只有当内容溢出时，才增加底部空间以允许置顶
                 this.messagesContainer.classList.add('has-overflow');
-
-                // 强制重排，确保 CSS 生效
                 void this.messagesContainer.offsetHeight;
-
-                // 瞬间滚动到新消息顶部
                 userMessageElement.scrollIntoView({ behavior: 'auto', block: 'start' });
             } else {
-                // 内容未溢出，不需要额外空间
                 this.messagesContainer.classList.remove('has-overflow');
             }
         }, 50);
 
-        // 7. 发送聊天请求
+        // 发送聊天请求
         try {
-            await this.sendChatRequest(message, session.accessToken, aiMessageElement, loadingSpinner);
+            await this.sendChatRequest(message, accessToken, aiMessageElement, loadingSpinner);
+        } catch (error) {
+            loadingSpinner.remove();
+            aiMessageElement.textContent = `错误: ${error}`;
+        }
+    }
+
+    /**
+     * 方法名: handleAgentMode
+     * 参数: message - 用户消息, accessToken - Access Token, userMessageElement - 用户消息元素
+     * 说明: 处理 Agent 模式的聊天（支持工具调用）
+     */
+    private async handleAgentMode(message: string, accessToken: string, userMessageElement: HTMLElement): Promise<void> {
+        // 显示 AI 消息容器（Agent 模式有特殊结构）
+        const aiMessageElement = this.displayMessage('assistant', '');
+        const loadingSpinner = DOM.append(aiMessageElement, DOM.$('.winter-ai-loading-spinner'));
+
+        // 动态调整底部空间并滚动
+        this.messagesContainer.classList.remove('has-overflow');
+
+        setTimeout(() => {
+            const isOverflowing = this.messagesContainer.scrollHeight > this.messagesContainer.clientHeight;
+
+            if (isOverflowing) {
+                this.messagesContainer.classList.add('has-overflow');
+                void this.messagesContainer.offsetHeight;
+                userMessageElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+            } else {
+                this.messagesContainer.classList.remove('has-overflow');
+            }
+        }, 50);
+
+        // 发送 Agent 请求
+        try {
+            await this.sendAgentRequest(message, accessToken, aiMessageElement, loadingSpinner);
         } catch (error) {
             loadingSpinner.remove();
             aiMessageElement.textContent = `错误: ${error}`;
@@ -480,6 +531,357 @@ export class WinterAIViewPane extends ViewPane {
      * 参数: content - Markdown 内容, container - 容器元素
      * 说明: 渲染 Markdown 并美化代码块
      */
+    private stepElements = new Map<string, HTMLElement>();
+
+    /**
+     * 方法名: sendAgentRequest
+     * 参数: message - 用户消息, accessToken - Access Token, aiMessageElement - AI 消息元素, loadingSpinner - 加载动画元素
+     * 说明: 发送 Agent 请求并处理 SSE 流式响应（通过 Extension Host 代理轮询）支持步骤和确认
+     */
+    private async sendAgentRequest(
+        message: string,
+        accessToken: string,
+        aiMessageElement: HTMLElement,
+        loadingSpinner: HTMLElement
+    ): Promise<void> {
+        this.stepElements.clear(); // 清理旧的步骤状态
+
+        try {
+            const workspaceRoot = this.workspaceContextService.getWorkspace().folders[0]?.uri.fsPath;
+            if (!workspaceRoot) {
+                throw new Error('No workspace folder open');
+            }
+
+            console.log('使用的工作目录:', workspaceRoot);
+
+            // 1. 启动请求 (Extension Host 不受 CSP 限制)
+            const requestId = await this.commandService.executeCommand<string>('winter.startAgentRequest', accessToken, message, workspaceRoot);
+
+            // 移除加载动画，显示"思考中"指示器
+            if (loadingSpinner.parentElement) {
+                loadingSpinner.remove();
+            }
+
+            // 立即显示思考中状态
+            const thinkingIndicator = DOM.append(aiMessageElement, DOM.$('.winter-ai-thinking-indicator'));
+            DOM.append(thinkingIndicator, DOM.$('span.winter-ai-status-indicator'));
+            const thinkingText = DOM.append(thinkingIndicator, DOM.$('span'));
+            thinkingText.textContent = 'Thinking...';
+            thinkingText.style.marginLeft = '8px';
+
+            // 2. 轮询获取数据
+            let buffer = '';
+            while (true) {
+                const response = await this.commandService.executeCommand<any>('winter.getAgentResponse', requestId);
+
+                if (response.error) {
+                    throw new Error(response.error);
+                }
+
+                if (response.chunks && response.chunks.length > 0) {
+                    console.log('[WinterAI] Received chunks:', response.chunks.length);
+                    for (const chunk of response.chunks) {
+                        buffer += chunk;
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop() || '';
+
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            if (trimmedLine.startsWith('data:')) {
+                                const jsonStr = trimmedLine.substring(5).trim();
+                                if (jsonStr && jsonStr !== '[DONE]') {
+                                    try {
+                                        const data = JSON.parse(jsonStr);
+                                        console.log('[WinterAI] Received Agent data:', data);
+
+                                        // 将处理逻辑加入渲染队列
+                                        this.renderQueue = this.renderQueue.then(async () => {
+                                            // 处理不同类型的消息
+                                            if (!data.type || data.type === 'message') {
+                                                // 实时渲染思考内容（reasoning_content）- 打字效果
+                                                // 只在没有正式内容时显示思考内容（避免总结阶段重复显示）
+                                                if (data.reasoningContent && (!data.content || data.content.trim().length === 0)) {
+                                                    console.log('收到 reasoning_content:', data.reasoningContent.substring(0, 100));
+                                                    // 移除思考指示器
+                                                    const thinkingIndicator = aiMessageElement.querySelector('.winter-ai-thinking-indicator');
+                                                    if (thinkingIndicator) {
+                                                        thinkingIndicator.remove();
+                                                    }
+
+                                                    // 直接添加到 aiMessageElement，保持顺序
+                                                    const reasoningContainer = DOM.append(aiMessageElement, DOM.$('.winter-ai-reasoning-content'));
+                                                    reasoningContainer.style.opacity = '0.8';
+                                                    reasoningContainer.style.fontStyle = 'italic';
+                                                    reasoningContainer.style.marginBottom = '8px';
+
+                                                    // 打字效果 (await 确保执行完才处理下一条)
+                                                    await this.typewriterEffect(data.reasoningContent, reasoningContainer, 10);
+                                                    this.scrollToBottom();
+                                                }
+
+                                                // 实时渲染正式内容（content）
+                                                if (data.content) {
+                                                    console.log('收到 content:', data.content.substring(0, 50));
+                                                    // 移除思考指示器（如果还有）
+                                                    const thinkingIndicator = aiMessageElement.querySelector('.winter-ai-thinking-indicator');
+                                                    if (thinkingIndicator) {
+                                                        thinkingIndicator.remove();
+                                                    }
+
+                                                    // 使用打字机效果
+                                                    // 首先移除旧的内容容器（如果不是增量更新）- 这里我们假设每次都是增量或者独立的
+                                                    // 为了支持 DeepSeek 的流式输出，通常是增量，但这里后端返回的是当前累积的还是增量？
+                                                    // 假设是增量（chunks），直接 append
+                                                    // 但如果 Agent 返回的是完整文本（某些实现），则需要清空
+                                                    // 您的后端 AgentServiceImpl 似乎是一次返回一段？
+                                                    // 无论如何，这里我们创建一个新的 div 来放这段 content
+                                                    // 为了避免过多 DOM，我们可以尝试合并到最后一个 .winter-ai-content
+                                                    let contentContainer = aiMessageElement.lastElementChild as HTMLElement;
+                                                    if (!contentContainer || !contentContainer.classList.contains('winter-ai-content')) {
+                                                        contentContainer = DOM.append(aiMessageElement, DOM.$('.winter-ai-content'));
+                                                        contentContainer.style.marginBottom = '12px';
+                                                    }
+
+                                                    // 对 content 也使用打字机效果
+                                                    await this.typewriterEffect(data.content, contentContainer, 15);
+                                                    this.scrollToBottom();
+                                                }
+                                            } else if (data.type === 'step' && data.stepInfo) {
+                                                console.log('收到 step:', data.stepInfo);
+                                                // 渲染步骤状态
+                                                this.renderAgentStep(data.stepInfo, aiMessageElement);
+                                                this.scrollToBottom();
+
+                                                // 如果是步骤开始，给一点视觉延迟
+                                                if (data.stepInfo.status === 'running') {
+                                                    await new Promise(resolve => setTimeout(resolve, 200));
+                                                }
+                                            } else if (data.type === 'confirmation_request' && data.requestId && data.stepInfo) { // 确保有 requestId 和 stepInfo
+                                                console.log('收到确认请求:', data.stepInfo);
+                                                this.renderConfirmationRequest(data.stepInfo, aiMessageElement, data.requestId, accessToken);
+                                                this.scrollToBottom();
+                                                // 确认请求需要等待用户操作，不需要 await 阻塞队列（因为它是最后的动作）
+                                            }
+                                        }).catch(err => {
+                                            console.error('Error in render queue:', err);
+                                        });
+
+                                    } catch (e) {
+                                        console.error('Failed to parse JSON chunk:', e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (response.done) {
+                    // 等待所有渲染完成
+                    await this.renderQueue;
+                    break;
+                }
+
+                // 避免轮询过快
+                await new Promise(resolve => setTimeout(resolve, 100)); // 100ms 轮询间隔
+            }
+
+        } catch (error) {
+            // 移除加载动画
+            if (loadingSpinner.parentElement) {
+                loadingSpinner.remove();
+            }
+            throw error;
+        }
+    }
+
+
+    private renderAgentStep(stepInfo: any, container: HTMLElement): void {
+        let stepEl = this.stepElements.get(stepInfo.id);
+
+        if (!stepEl) {
+            stepEl = DOM.append(container, DOM.$('.winter-ai-step'));
+            this.stepElements.set(stepInfo.id, stepEl);
+        }
+
+        // 确保容器有正确的 Flex 布局类
+        if (!stepEl.classList.contains('winter-ai-step-container')) {
+            stepEl.classList.add('winter-ai-step-container');
+        }
+
+        // 清空内容重新构建 (为了更容易处理不同的布局，且避免状态混淆)
+        // 注意：由于我们现在有特定的布局要求，增量更新变得复杂，
+        // 最好是保留结构引用或在确定布局类型后更新。
+        // 但为了简化实现 "Read file(s) [Pill]" 这种结构，完全重绘可能更安全，前提是不闪烁。
+        // 之前的闪烁是因为 clearNode 导致高度塌陷。
+        // 我们可以尝试复用元素。
+
+        let icon = stepEl.querySelector('.winter-ai-step-icon') as HTMLElement;
+        if (!icon) {
+            icon = DOM.append(stepEl, DOM.$('span.winter-ai-step-icon'));
+        }
+
+        let label = stepEl.querySelector('.winter-ai-step-label') as HTMLElement;
+        if (!label) {
+            label = DOM.append(stepEl, DOM.$('span.winter-ai-step-label'));
+        }
+
+        // 移除旧的 Pill (如果有)
+        const oldPill = stepEl.querySelector('.winter-ai-file-pill');
+        if (oldPill) oldPill.remove();
+
+        // 获取工具信息
+        let toolName = '';
+        let args: any = {};
+        if (stepInfo.toolCall && stepInfo.toolCall.function) {
+            toolName = stepInfo.toolCall.function.name;
+            try {
+                args = JSON.parse(stepInfo.toolCall.function.arguments);
+            } catch (e) {
+                // ignore
+            }
+        }
+
+        const filePath = args.file_path || args.TargetFile || args.AbsolutePath || args.directory_path || args.path;
+
+        // 设置图标和文本
+        if (stepInfo.status === 'running') {
+            // 使用转圈的加载图标
+            icon.className = 'codicon codicon-loading codicon-modifier-spin winter-ai-step-icon';
+            icon.style.color = 'var(--vscode-progressBar-background)';
+
+            if (toolName.includes('read') || toolName.includes('view')) {
+                label.textContent = 'Reading file(s)...';
+            } else if (toolName.includes('write') || toolName.includes('edit') || toolName.includes('replace')) {
+                label.textContent = 'Editing file...';
+            } else if (toolName.includes('delete')) {
+                label.textContent = 'Deleting file...';
+            } else if (toolName.includes('command')) {
+                label.textContent = 'Executing...';
+            } else if (toolName.includes('list')) {
+                label.textContent = 'Listing directory...';
+            } else {
+                label.textContent = toolName ? `${toolName}...` : 'Processing...';
+            }
+
+        } else if (stepInfo.status === 'completed') {
+            // 图标
+            if (toolName.includes('read') || toolName.includes('view')) {
+                // 读文件：显示眼睛图标
+                icon.className = 'codicon codicon-eye winter-ai-step-icon';
+                icon.style.color = 'var(--vscode-textLink-foreground)';
+                label.textContent = 'Read file(s)';
+            } else {
+                // 其他（写、执行）：显示绿色对勾
+                icon.className = 'codicon codicon-check winter-ai-step-icon';
+                icon.style.color = 'var(--vscode-testing-iconPassed)';
+
+                if (toolName.includes('write') || toolName.includes('edit') || toolName.includes('replace')) {
+                    label.textContent = 'Accepted edits to';
+                } else if (toolName.includes('delete')) {
+                    label.textContent = 'Deleted';
+                } else {
+                    label.textContent = 'Completed';
+                }
+            }
+        } else if (stepInfo.status === 'failed') {
+            icon.className = 'codicon codicon-error winter-ai-step-icon';
+            icon.style.color = 'var(--vscode-testing-iconFailed)';
+            label.textContent = 'Failed';
+        }
+
+        // 添加文件 Pill
+        if (filePath) {
+            const pill = DOM.append(stepEl, DOM.$('span.winter-ai-file-pill'));
+
+            // 使用 IconLabel 显示官方文件图标
+            const resource = URI.file(filePath);
+            const fileKind = args.directory_path ? FileKind.FOLDER : FileKind.FILE;
+            const classes = getIconClasses(this.modelService, this.languageService, resource, fileKind);
+
+            const iconLabel = new IconLabel(pill, { supportHighlights: false });
+            const labelText = filePath.split(/[/\\]/).pop() || filePath;
+
+            iconLabel.setLabel(labelText, undefined, { extraClasses: classes });
+
+            // 简单的样式调整
+            const labelElement = iconLabel.element;
+            labelElement.style.display = 'flex';
+            labelElement.style.alignItems = 'center';
+
+            pill.title = filePath;
+
+            // 点击打开文件
+            pill.onclick = (e) => {
+                // 防止事件冒泡（虽然 IconLabel 内部可能有处理，但以防万一）
+                e.stopPropagation();
+                this.openerService.open(filePath);
+            };
+        }
+    }
+
+    private renderConfirmationRequest(stepInfo: any, container: HTMLElement, requestId: string, accessToken: string): void {
+        // 检查是否已经渲染过
+        const confirmId = `confirm-${stepInfo.id}`;
+        if (container.querySelector(`#${confirmId}`)) return;
+
+        const confirmEl = DOM.append(container, DOM.$('.winter-ai-confirmation'));
+        confirmEl.id = confirmId;
+
+        const title = DOM.append(confirmEl, DOM.$('.winter-ai-confirmation-title'));
+        title.textContent = 'Waiting on your input.';
+
+        const details = DOM.append(confirmEl, DOM.$('.winter-ai-confirmation-details'));
+        details.textContent = stepInfo.content;
+        details.style.marginBottom = '8px';
+        details.style.fontSize = '0.9em';
+
+        if (stepInfo.toolCall && stepInfo.toolCall.function && stepInfo.toolCall.function.arguments) {
+            const codeBlock = DOM.append(confirmEl, DOM.$('pre'));
+            codeBlock.style.backgroundColor = 'var(--vscode-editor-background)';
+            codeBlock.style.padding = '4px';
+            codeBlock.style.overflow = 'auto';
+            codeBlock.style.maxHeight = '100px';
+            codeBlock.textContent = stepInfo.toolCall.function.arguments;
+        }
+
+        const actions = DOM.append(confirmEl, DOM.$('.winter-ai-confirmation-actions'));
+        actions.style.display = 'flex';
+        actions.style.gap = '8px';
+
+        const createBtn = (text: string, isPrimary: boolean, onClick: () => void) => {
+            const btn = DOM.append(actions, DOM.$('button'));
+            btn.textContent = text;
+            btn.style.padding = '4px 8px';
+            btn.style.border = 'none';
+            btn.style.cursor = 'pointer';
+            btn.style.borderRadius = '2px';
+            if (isPrimary) {
+                btn.style.backgroundColor = 'var(--vscode-button-background)';
+                btn.style.color = 'var(--vscode-button-foreground)';
+            } else {
+                btn.style.backgroundColor = 'var(--vscode-button-secondaryBackground)';
+                btn.style.color = 'var(--vscode-button-secondaryForeground)';
+            }
+            btn.onclick = onClick;
+            return btn;
+        };
+
+        createBtn('Reject', false, async () => {
+            confirmEl.remove();
+            await this.commandService.executeCommand('winter.confirmAgentAction', requestId, 'reject', accessToken);
+        });
+
+        createBtn('Trust', true, async () => {
+            confirmEl.remove();
+            await this.commandService.executeCommand('winter.confirmAgentAction', requestId, 'approve', accessToken);
+        });
+    }
+
+    /**
+     * 方法名: renderMarkdown
+     * 参数: content - Markdown 内容, container - 容器元素
+     * 说明: 渲染 Markdown 并美化代码块
+     */
     private renderMarkdown(content: string, container: HTMLElement): void {
         DOM.clearNode(container); // 使用 DOM 工具清空内容
 
@@ -526,6 +928,86 @@ export class WinterAIViewPane extends ViewPane {
             }
         });
 
+        // 处理文件路径：将文件路径转换为可点击的 pill
+        const workspaceRoot = this.workspaceContextService.getWorkspace().folders[0]?.uri.fsPath;
+        if (workspaceRoot) {
+            const textNodes: Node[] = [];
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null);
+            let node;
+            while (node = walker.nextNode()) {
+                // 跳过代码块中的文本
+                let parent = node.parentElement;
+                let inCodeBlock = false;
+                while (parent && parent !== element) {
+                    if (parent.tagName === 'CODE' || parent.tagName === 'PRE') {
+                        inCodeBlock = true;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                }
+                if (!inCodeBlock) {
+                    textNodes.push(node);
+                }
+            }
+
+            // 文件路径正则：匹配常见的文件扩展名
+            const filePathRegex = /([a-zA-Z0-9_\-./]+\.(py|js|ts|java|json|txt|md|xml|yaml|yml|css|html|sh|go|rs|cpp|c|h))/g;
+
+            textNodes.forEach(textNode => {
+                const text = textNode.textContent || '';
+                const matches = Array.from(text.matchAll(filePathRegex));
+                if (matches.length > 0) {
+                    const fragment = document.createDocumentFragment();
+                    let lastIndex = 0;
+
+                    matches.forEach(match => {
+                        const filePath = match[1];
+                        const startIndex = match.index!;
+
+                        // 添加匹配前的文本
+                        if (startIndex > lastIndex) {
+                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, startIndex)));
+                        }
+
+                        // 创建文件 pill
+                        const pill = DOM.$('span.winter-ai-file-pill');
+
+                        // 构造完整路径以获取正确的图标
+                        const fullPath = filePath.startsWith('/') ? filePath : `${workspaceRoot}/${filePath}`;
+                        const resource = URI.file(fullPath);
+                        const classes = getIconClasses(this.modelService, this.languageService, resource, FileKind.FILE);
+
+                        // 使用 IconLabel 显示官方图标
+                        const iconLabel = new IconLabel(pill, { supportHighlights: false });
+                        const fileNameStr = filePath.split(/[/\\]/).pop() || filePath;
+
+                        iconLabel.setLabel(fileNameStr, undefined, { extraClasses: classes });
+
+                        // 样式调整确保 IconLabel 正确显示
+                        const labelElement = iconLabel.element;
+                        labelElement.style.display = 'flex';
+                        labelElement.style.alignItems = 'center';
+
+                        pill.title = fullPath;
+                        pill.onclick = (e) => {
+                            e.stopPropagation(); // 防止冒泡
+                            this.commandService.executeCommand('vscode.open', URI.file(fullPath));
+                        };
+                        fragment.appendChild(pill);
+
+                        lastIndex = startIndex + filePath.length;
+                    });
+
+                    // 添加剩余文本
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+
+                    textNode.parentNode?.replaceChild(fragment, textNode);
+                }
+            });
+        }
+
         container.appendChild(element);
     }
 
@@ -564,5 +1046,202 @@ export class WinterAIViewPane extends ViewPane {
         }
 
         return messageElement; // 返回消息容器元素，以便滚动
+    }
+
+    /**
+            throw error;
+        }
+    }
+
+    /**
+     * 方法名: renderAgentThinking
+     * 参数: reasoningContent - 思考内容, container - 容器元素
+     * 说明: 渲染 Agent 的思考过程（可折叠，带光扫效果）
+     */
+    // @ts-ignore
+    private renderAgentThinking(reasoningContent: string, container: HTMLElement): HTMLElement {
+        // 创建思考容器
+        const thinkingContainer = DOM.append(container, DOM.$('.winter-ai-thinking'));
+
+        // 创建思考头部（可点击折叠/展开）
+        const thinkingHeader = DOM.append(thinkingContainer, DOM.$('.winter-ai-thinking-header'));
+
+        // 添加光扫效果
+        // @ts-expect-error - shimmer 元素用于 CSS 动画，不需要在 TS 中引用
+        const shimmer = DOM.append(thinkingHeader, DOM.$('.winter-ai-thinking-shimmer'));
+
+        const thinkingLabel = DOM.append(thinkingHeader, DOM.$('span.winter-ai-thinking-label'));
+        thinkingLabel.textContent = 'Thinking...';
+
+        const chevron = DOM.append(thinkingHeader, DOM.$('span.winter-ai-thinking-chevron'));
+        chevron.classList.add(...ThemeIcon.asClassNameArray(Codicon.chevronDown));
+
+        // 创建思考内容（默认折叠）
+        const thinkingContent = DOM.append(thinkingContainer, DOM.$('.winter-ai-thinking-content.collapsed'));
+        thinkingContent.textContent = reasoningContent;
+
+        // 点击头部切换折叠/展开
+        thinkingHeader.addEventListener('click', () => {
+            const isCollapsed = thinkingContent.classList.contains('collapsed');
+            if (isCollapsed) {
+                thinkingContent.classList.remove('collapsed');
+                chevron.classList.remove(...ThemeIcon.asClassNameArray(Codicon.chevronDown));
+                chevron.classList.add(...ThemeIcon.asClassNameArray(Codicon.chevronUp));
+            } else {
+                thinkingContent.classList.add('collapsed');
+                chevron.classList.remove(...ThemeIcon.asClassNameArray(Codicon.chevronUp));
+                chevron.classList.add(...ThemeIcon.asClassNameArray(Codicon.chevronDown));
+            }
+        });
+
+        return thinkingContainer;
+    }
+
+    /**
+     * 方法名: renderAgentToolCall
+     * 参数: toolCall - 工具调用信息, container - 容器元素
+     * 说明: 渲染 Agent 的工具调用（文件操作、命令执行等）
+     */
+    // @ts-ignore
+    private renderAgentToolCall(toolCall: any, container: HTMLElement): HTMLElement {
+        const toolContainer = DOM.append(container, DOM.$('.winter-ai-tool-call'));
+
+        // 工具名称
+        const toolHeader = DOM.append(toolContainer, DOM.$('.winter-ai-tool-header'));
+        const toolIcon = DOM.append(toolHeader, DOM.$('span'));
+
+        // 根据工具类型选择图标
+        const iconMap: { [key: string]: ThemeIcon } = {
+            'read_file': Codicon.fileCode,
+            'write_file': Codicon.edit,
+            'list_files': Codicon.folder,
+            'execute_command': Codicon.terminal
+        };
+        const icon = iconMap[toolCall.function.name] || Codicon.tools;
+        toolIcon.classList.add(...ThemeIcon.asClassNameArray(icon));
+
+        const toolName = DOM.append(toolHeader, DOM.$('span.winter-ai-tool-name'));
+        toolName.textContent = toolCall.function.name;
+
+        // 工具参数
+        const toolArgs = DOM.append(toolContainer, DOM.$('.winter-ai-tool-args'));
+        try {
+            const args = JSON.parse(toolCall.function.arguments);
+
+            // 特殊处理文件路径（可点击打开）
+            if (args.file_path) {
+                const filePathLabel = DOM.append(toolArgs, DOM.$('span.winter-ai-file-path'));
+                filePathLabel.textContent = args.file_path;
+                filePathLabel.title = '点击打开文件';
+                filePathLabel.addEventListener('click', () => {
+                    this.commandService.executeCommand('vscode.open', URI.file(args.file_path));
+                });
+            }
+
+            // 显示其他参数
+            for (const [key, value] of Object.entries(args)) {
+                if (key !== 'file_path') {
+                    const argItem = DOM.append(toolArgs, DOM.$('.winter-ai-tool-arg'));
+                    argItem.textContent = `${key}: ${value}`;
+                }
+            }
+        } catch (e) {
+            toolArgs.textContent = toolCall.function.arguments;
+        }
+
+        return toolContainer;
+    }
+
+    /**
+     * 方法名: renderFileModificationConfirm
+     * 参数: filePath - 文件路径, content - 文件内容, operation - 操作类型, container - 容器元素
+     * 说明: 渲染文件修改确认对话框（支持预览、对比、确认/拒绝）
+     * 注意: 此方法将在 Agent 模式完全集成后使用
+     */
+    // @ts-expect-error - 预留方法，将在 Agent 模式完全集成后使用
+    private async renderFileModificationConfirm(
+        filePath: string,
+        content: string,
+        operation: 'create' | 'modify' | 'delete',
+        container: HTMLElement
+    ): Promise<boolean> {
+        return new Promise((resolve) => {
+            const confirmContainer = DOM.append(container, DOM.$('.winter-ai-file-confirm'));
+
+            // 标题
+            const title = DOM.append(confirmContainer, DOM.$('.winter-ai-file-confirm-title'));
+            const operationText = operation === 'create' ? '创建' : operation === 'modify' ? '修改' : '删除';
+            title.textContent = `${operationText}文件: ${filePath}`;
+
+            // 内容预览（仅创建和修改时显示）
+            if (operation !== 'delete') {
+                const preview = DOM.append(confirmContainer, DOM.$('.winter-ai-file-preview'));
+                const pre = DOM.append(preview, DOM.$('pre'));
+                const code = DOM.append(pre, DOM.$('code'));
+                code.textContent = content;
+            }
+
+            // 按钮组
+            const buttons = DOM.append(confirmContainer, DOM.$('.winter-ai-file-confirm-buttons'));
+
+            const confirmBtn = DOM.append(buttons, DOM.$('button.winter-ai-btn.winter-ai-btn-primary'));
+            confirmBtn.textContent = '确认';
+            confirmBtn.addEventListener('click', () => {
+                confirmContainer.remove();
+                resolve(true);
+            });
+
+            const cancelBtn = DOM.append(buttons, DOM.$('button.winter-ai-btn.winter-ai-btn-secondary'));
+            cancelBtn.textContent = '取消';
+            cancelBtn.addEventListener('click', () => {
+                confirmContainer.remove();
+                resolve(false);
+            });
+        });
+    }
+
+    /**
+     * 方法名: typewriterEffect
+     * 参数: text - 要显示的文本, container - 容器元素, speed - 打字速度（毫秒/字符）
+     * 说明: 实现打字机效果
+     * 返回: Promise<void>
+     */
+    private async typewriterEffect(text: string, container: HTMLElement, speed: number = 15): Promise<void> {
+        return new Promise((resolve) => {
+            let index = 0;
+
+            const typeNextChar = () => {
+                if (index < text.length) {
+                    // 清空 container 并重新渲染
+                    DOM.clearNode(container);
+                    this.renderMarkdown(text.substring(0, index + 1), container);
+                    index++;
+
+                    // 每打几个字就滚动一次
+                    if (index % 5 === 0) {
+                        this.scrollToBottom();
+                    }
+
+                    setTimeout(typeNextChar, speed);
+                } else {
+                    // 最后再滚动一次确保到底部
+                    this.scrollToBottom();
+                    resolve();
+                }
+            };
+
+            typeNextChar();
+        });
+    }
+
+    /**
+     * 方法名: scrollToBottom
+     * 说明: 滚动到消息容器底部
+     */
+    private scrollToBottom(): void {
+        // 使用 requestAnimationFrame 确保 DOM 更新后再滚动
+        requestAnimationFrame(() => {
+            this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+        });
     }
 }
